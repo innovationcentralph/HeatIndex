@@ -6231,6 +6231,66 @@
 			(embedded_fonts no)
 		)
 	)
+	(rectangle
+		(start 242.57 228.6)
+		(end 317.5 308.61)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(fill
+			(type none)
+		)
+		(uuid 6b9333a4-417b-4a76-973d-40c2db40aca1)
+	)
+	(rectangle
+		(start 433.07 53.34)
+		(end 572.77 265.43)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(fill
+			(type none)
+		)
+		(uuid 93744ba9-ca58-4b17-96f2-83e60e747aab)
+	)
+	(rectangle
+		(start 245.11 320.04)
+		(end 337.82 394.97)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(fill
+			(type none)
+		)
+		(uuid 96e95930-b7fd-4378-936e-62d9af2d772c)
+	)
+	(rectangle
+		(start 215.9 93.98)
+		(end 354.33 215.9)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(fill
+			(type none)
+		)
+		(uuid b68e7647-a3f0-48d8-99e1-1cf7933deace)
+	)
+	(rectangle
+		(start 203.2 10.16)
+		(end 365.76 82.55)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(fill
+			(type none)
+		)
+		(uuid c1f80626-cc4d-453f-b2c6-9eb305f9ec90)
+	)
 	(text "RELAY1\n"
 		(exclude_from_sim no)
 		(at 537.7345 87.8127 0)
