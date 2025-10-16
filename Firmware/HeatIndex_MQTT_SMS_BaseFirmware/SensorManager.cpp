@@ -1,6 +1,6 @@
 #include "SensorManager.h"
 #include "SystemConfig.h"
-#include "SHT2x.h"
+#include "src/SHT2x.h"
 //#define DEBUG_SENSOR  // test
 SHT2x sht20(&Wire);
 #define MAX_SENSOR_HISTORY 3
@@ -14,7 +14,7 @@ TaskHandle_t xTaskHandle_SensorManager = NULL;
 SemaphoreHandle_t xSemaphore_Sensor = NULL;
 
 // Define the global sensor data
-SensorData_t sensorData = { 0.0, 0.0 };
+SensorData_t sensorData = { 0.0, 0.0, 0.0, false };
 
 // Circular buffer for filtering
 float tempHistory[MAX_SENSOR_HISTORY] = { 0 };
@@ -77,7 +77,7 @@ void SensorManagerTask(void* pvParameters) {
   uint32_t lastReadTime = millis();
 
   // SHT2x Init
-  Wire.begin(SDA_PIN, SCL_PIN);
+  Wire.begin();
   sht20.begin();
   uint8_t stat = sht20.getStatus();
   Serial.print("Sensor status: 0x");
