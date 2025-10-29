@@ -146,6 +146,11 @@ extern String topicThresholds;
 extern String topicRequestContacts;
 extern String topicContacts;
 
+extern String topicRequestDateTime;
+extern String topicGetDateTime;
+
+extern String currentDateTime; 
+
 extern uint32_t hbInterval;
 
 // Wi-Fi credentials

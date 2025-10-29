@@ -31,6 +31,9 @@ String topicThresholds;
 String topicRequestContacts;
 String topicContacts;
 
+String topicRequestDateTime;
+String topicGetDateTime;
+
 
 void loadDeviceESNFromEEPROM() {
   EEPROM.begin(EEPROM_SIZE);
@@ -85,6 +88,9 @@ void initializeDynamicTopics() {
 
   topicRequestContacts  = String(deviceESN) + "/RequestContacts";
   topicContacts         = String(deviceESN) + "/Contacts";
+
+  topicRequestDateTime  = String(deviceESN) + "/RequestDateTime";
+  topicGetDateTime      = String(deviceESN) + "/DateTime";
   
 }
 

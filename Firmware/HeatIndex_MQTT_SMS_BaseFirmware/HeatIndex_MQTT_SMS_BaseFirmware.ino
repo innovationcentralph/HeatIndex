@@ -16,6 +16,8 @@ uint32_t heartbeatMillis = 0;
 uint32_t sendInterval = 0;
 uint32_t lastSendTime = 0;
 
+String currentDateTime = "";
+
 TowerLightState currentState = STATE_GREEN;
 TowerLightState prevState = STATE_INIT;
 
@@ -41,6 +43,7 @@ void myOnMqttConnect(PubSubClient& client, bool isWifi) {
   client.subscribe(topicPing.c_str());
   client.subscribe(topicContacts.c_str());
   client.subscribe(topicThresholds.c_str());
+  client.subscribe(topicGetDateTime.c_str());
 
   client.publish(initTopic.c_str(), isWifi ? "subscribed via WIFI" : "subscribed via WIFI");
 
@@ -145,6 +148,24 @@ void myMessageHandler(char* topic, byte* payload, unsigned int len) {
     }
 #endif
   }
+
+  else if (String(topic) == topicGetDateTime) {
+    StaticJsonDocument<128> doc;
+    DeserializationError error = deserializeJson(doc, payload, len);
+    if (error) {
+      Serial.print(F("DateTime JSON parse failed: "));
+      Serial.println(error.f_str());
+      return;
+    }
+
+    const char* dt = doc["datetime"];
+    if (dt) {
+      currentDateTime = String(dt);   // ✅ Save globally
+      Serial.print(F("[DateTime Updated] "));
+      Serial.println(currentDateTime);
+    }
+  }
+
 }
 
 bool onWriteDone(Modbus::ResultCode rc, uint16_t tid, void* data) {
@@ -351,18 +372,29 @@ void loop() {
           vTaskDelay(pdMS_TO_TICKS(500));
 
           mqttGSM.publish(topicRequestThreshold.c_str(), "reqTH");
+          vTaskDelay(pdMS_TO_TICKS(500));
+          mqttGSM.publish(topicRequestDateTime.c_str(), "SAMPLE");
         } else if (isMQTTConnectedWiFi) {
           mqttWiFi.publish(topicSensorData.c_str(), _payload.c_str());
           vTaskDelay(pdMS_TO_TICKS(500));
 
           mqttWiFi.publish(topicRequestThreshold.c_str(), "reqTH");
+          vTaskDelay(pdMS_TO_TICKS(500));
+          mqttWiFi.publish(topicRequestDateTime.c_str(), "SAMPLE");
         }
 
-        Serial.println("Sending SMS Blast");
-        for (int x = 0; x < contactCount; x++) {
-          String msg = "Heat Index " + String(sensorData.heatIndex, 1) + " C! Delikado na, huwag nang lumabas. Uminom ng tubig at manatili sa malamig na lugar. \r\n";
-          enqueueSms(contacts[x].c_str(), msg.c_str());
-          vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(2000));
+
+        if(prevState == STATE_ORANGE || prevState == STATE_BLUE || prevState == STATE_GREEN || prevState == STATE_INIT){
+          Serial.println("Sending SMS Blast");
+          for (int x = 0; x < contactCount; x++) {
+
+            //[Time and Date]Heat Index 52°C Critical!Heat stroke risk. Stay in shaded or cool areas.
+
+            String msg = "[" + currentDateTime +"] Heat Index " + String(sensorData.heatIndex, 1) + " C! Critical! Heat stroke risk. Stay in shaded or cool areas. \r\n";
+            enqueueSms(contacts[x].c_str(), msg.c_str());
+            vTaskDelay(pdMS_TO_TICKS(100));
+          }
         }
         break;
       case STATE_ORANGE:
@@ -379,17 +411,26 @@ void loop() {
           vTaskDelay(pdMS_TO_TICKS(500));
 
           mqttGSM.publish(topicRequestThreshold.c_str(), "reqTH");
+          vTaskDelay(pdMS_TO_TICKS(500));
+          mqttGSM.publish(topicRequestDateTime.c_str(), "SAMPLE");
         } else if (isMQTTConnectedWiFi) {
           mqttWiFi.publish(topicSensorData.c_str(), _payload.c_str());
           vTaskDelay(pdMS_TO_TICKS(500));
 
           mqttWiFi.publish(topicRequestThreshold.c_str(), "reqTH");
+          vTaskDelay(pdMS_TO_TICKS(500));
+          mqttWiFi.publish(topicRequestDateTime.c_str(), "SAMPLE");
         }
 
-        for (int x = 0; x < contactCount; x++) {
-          String msg = "Heat Index " + String(sensorData.heatIndex, 1) + " C! Grabe ang init, iwas muna sa labas 10AM to 4PM. Stay cool at hydrated! \r\n";
-          enqueueSms(contacts[x].c_str(), msg.c_str());
-          vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(2000));
+
+        if(prevState == STATE_BLUE || prevState == STATE_GREEN || prevState == STATE_INIT){
+          Serial.println("Sending SMS Blast");
+          for (int x = 0; x < contactCount; x++) {
+            String msg = "[" + currentDateTime +"] Heat Index " + String(sensorData.heatIndex, 1) + " C! Alert! Fatigue possible. Drink water and rest. \r\n";
+            enqueueSms(contacts[x].c_str(), msg.c_str());
+            vTaskDelay(pdMS_TO_TICKS(100));
+          }
         }
         break;
       case STATE_BLUE:
@@ -413,11 +454,11 @@ void loop() {
           mqttWiFi.publish(topicRequestThreshold.c_str(), "reqTH");
         }
 
-        for (int x = 0; x < contactCount; x++) {
-          String msg = "Heat Index " + String(sensorData.heatIndex, 1) + " C. Medyo mainit na! Iwas bilad, magpayong at uminom ng maraming tubig. \r\n";
-          enqueueSms(contacts[x].c_str(), msg.c_str());
-          vTaskDelay(pdMS_TO_TICKS(100));
-        }
+        // for (int x = 0; x < contactCount; x++) {
+        //   String msg = "Heat Index " + String(sensorData.heatIndex, 1) + " C. Medyo mainit na! Iwas bilad, magpayong at uminom ng maraming tubig. \r\n";
+        //   enqueueSms(contacts[x].c_str(), msg.c_str());
+        //   vTaskDelay(pdMS_TO_TICKS(100));
+        // }
         break;
       case STATE_GREEN:
         towerLights.green = true;
@@ -440,11 +481,11 @@ void loop() {
           mqttWiFi.publish(topicRequestThreshold.c_str(), "reqTH");
         }
 
-        for (int x = 0; x < contactCount; x++) {
-          String msg = "Heat Index " + String(sensorData.heatIndex, 1) + " C. Presko pa! Ligtas sa labas pero tubig-tubig din para iwas uhaw. \r\n";
-          enqueueSms(contacts[x].c_str(), msg.c_str());
-          vTaskDelay(pdMS_TO_TICKS(100));
-        }
+        // for (int x = 0; x < contactCount; x++) {
+        //   String msg = "Heat Index " + String(sensorData.heatIndex, 1) + " C. Presko pa! Ligtas sa labas pero tubig-tubig din para iwas uhaw. \r\n";
+        //   enqueueSms(contacts[x].c_str(), msg.c_str());
+        //   vTaskDelay(pdMS_TO_TICKS(100));
+        // }
         break;
       case STATE_INIT:
         towerLights.green = towerLights.red = towerLights.orange = towerLights.blue = false;
