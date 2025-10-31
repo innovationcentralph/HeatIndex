@@ -33,6 +33,8 @@ ModbusRTU modbus;
 void initializeModbus();
 void modbusTask(void* pvParameters);
 
+void rtcTask(void* pvParameters);
+
 bool saveContactsToEEPROM(const String inContacts[], uint8_t inCount);
 bool loadContactsFromEEPROM(String outContacts[], uint8_t maxOut, uint8_t& outCount);
 
@@ -160,12 +162,11 @@ void myMessageHandler(char* topic, byte* payload, unsigned int len) {
 
     const char* dt = doc["datetime"];
     if (dt) {
-      currentDateTime = String(dt);   // ✅ Save globally
+      currentDateTime = String(dt);  // ✅ Save globally
       Serial.print(F("[DateTime Updated] "));
       Serial.println(currentDateTime);
     }
   }
-
 }
 
 bool onWriteDone(Modbus::ResultCode rc, uint16_t tid, void* data) {
@@ -280,6 +281,16 @@ void setup() {
     1              // Core ID (1 for ESP32 dual-core)
   );
 
+  xTaskCreatePinnedToCore(
+    rtcTask,     // Function to run
+    "RTC Task",  // Task name
+    4096,        // Stack size (in bytes)
+    NULL,        // Task parameter
+    1,           // Priority
+    NULL,        // Task handle
+    1            // Core ID (1 for ESP32 dual-core)
+  );
+
   bool coil_on[4] = { 1, 1, 1, 1 };
   bool coil_off[4] = { 0, 0, 0, 0 };
 
@@ -337,20 +348,20 @@ void setup() {
 }
 
 void loop() {
-  
- // N  W  A  C   -> 43
+
+  // N  W  A  C   -> 43
   //27 33 42 52
 
   // Decide new state
-  if (sensorData.heatIndex >= (thresholds.critical + TH_HYSTERESIS)) { //hi > 52.5
+  if (sensorData.heatIndex >= (thresholds.critical + TH_HYSTERESIS)) {  //hi > 52.5
     currentState = STATE_RED;
-  } else if (sensorData.heatIndex >= (thresholds.alert   + TH_HYSTERESIS) && sensorData.heatIndex < (thresholds.critical - TH_HYSTERESIS)) {  //hi >= 42.5 && hi < 51.5
+  } else if (sensorData.heatIndex >= (thresholds.alert + TH_HYSTERESIS) && sensorData.heatIndex < (thresholds.critical - TH_HYSTERESIS)) {  //hi >= 42.5 && hi < 51.5
     currentState = STATE_ORANGE;
-  } else if (sensorData.heatIndex >= (thresholds.warning + TH_HYSTERESIS) && sensorData.heatIndex < (thresholds.alert - TH_HYSTERESIS)) {   // hi >= 33.5 && hi < 41.5
+  } else if (sensorData.heatIndex >= (thresholds.warning + TH_HYSTERESIS) && sensorData.heatIndex < (thresholds.alert - TH_HYSTERESIS)) {  // hi >= 33.5 && hi < 41.5
     currentState = STATE_BLUE;
-  } else if (sensorData.heatIndex >= (thresholds.normal  + TH_HYSTERESIS) && sensorData.heatIndex < (thresholds.warning - TH_HYSTERESIS)) {  // hi >= 27.5 && hi < 32.5
+  } else if (sensorData.heatIndex >= (thresholds.normal + TH_HYSTERESIS) && sensorData.heatIndex < (thresholds.warning - TH_HYSTERESIS)) {  // hi >= 27.5 && hi < 32.5
     currentState = STATE_GREEN;
-  } else if(sensorData.heatIndex < thresholds.normal){  //   hi < 27
+  } else if (sensorData.heatIndex < thresholds.normal) {  //   hi < 27
     currentState = STATE_INIT;
   }
 
@@ -385,13 +396,13 @@ void loop() {
 
         vTaskDelay(pdMS_TO_TICKS(2000));
 
-        if(prevState == STATE_ORANGE || prevState == STATE_BLUE || prevState == STATE_GREEN || prevState == STATE_INIT){
+        if (prevState == STATE_ORANGE || prevState == STATE_BLUE || prevState == STATE_GREEN || prevState == STATE_INIT) {
           Serial.println("Sending SMS Blast");
           for (int x = 0; x < contactCount; x++) {
 
             //[Time and Date]Heat Index 52°C Critical!Heat stroke risk. Stay in shaded or cool areas.
 
-            String msg = "[" + currentDateTime +"] Heat Index " + String(sensorData.heatIndex, 1) + " C! Critical! Heat stroke risk. Stay in shaded or cool areas. \r\n";
+            String msg = "[" + currentDateTime + "] Heat Index " + String(sensorData.heatIndex, 1) + " C! Critical! Heat stroke risk. Stay in shaded or cool areas. \r\n";
             enqueueSms(contacts[x].c_str(), msg.c_str());
             vTaskDelay(pdMS_TO_TICKS(100));
           }
@@ -424,10 +435,10 @@ void loop() {
 
         vTaskDelay(pdMS_TO_TICKS(2000));
 
-        if(prevState == STATE_BLUE || prevState == STATE_GREEN || prevState == STATE_INIT){
+        if (prevState == STATE_BLUE || prevState == STATE_GREEN || prevState == STATE_INIT) {
           Serial.println("Sending SMS Blast");
           for (int x = 0; x < contactCount; x++) {
-            String msg = "[" + currentDateTime +"] Heat Index " + String(sensorData.heatIndex, 1) + " C! Alert! Fatigue possible. Drink water and rest. \r\n";
+            String msg = "[" + currentDateTime + "] Heat Index " + String(sensorData.heatIndex, 1) + " C! Alert! Fatigue possible. Drink water and rest. \r\n";
             enqueueSms(contacts[x].c_str(), msg.c_str());
             vTaskDelay(pdMS_TO_TICKS(100));
           }
@@ -538,28 +549,28 @@ void loop() {
 
   if (millis() - heartbeatMillis > hbInterval) {
 
-//     //enqueueSms("+639260694581", "Test SMS from Device\r\n");
+    //     //enqueueSms("+639260694581", "Test SMS from Device\r\n");
 
-//     String _topic = String(deviceESN) + "/Heartbeat";
-//     String _payload = "Heartbeat";
+    //     String _topic = String(deviceESN) + "/Heartbeat";
+    //     String _payload = "Heartbeat";
 
-//     if (isMQTTConnectedGSM) {
-//       mqttGSM.publish(_topic.c_str(), _payload.c_str());
-//     } else if (isMQTTConnectedWiFi) {
-//       mqttWiFi.publish(_topic.c_str(), _payload.c_str());
-//     }
+    //     if (isMQTTConnectedGSM) {
+    //       mqttGSM.publish(_topic.c_str(), _payload.c_str());
+    //     } else if (isMQTTConnectedWiFi) {
+    //       mqttWiFi.publish(_topic.c_str(), _payload.c_str());
+    //     }
 
-// #ifdef DEBUG_MQTT
-//     Serial.println("Sent heartbeat message.");
-// #endif
+    // #ifdef DEBUG_MQTT
+    //     Serial.println("Sent heartbeat message.");
+    // #endif
 
-// #ifdef DEBUG_SMS
-//     // Serial.println("Sending SMS Blast");
-//     // for(int x = 0; x < contactCount; x++){
-//     //   enqueueSms(contacts[x].c_str(), "Test SMS from Heat Index Project \r\n");
-//     //   vTaskDelay(pdMS_TO_TICKS(100));
-//     // }
-// #endif
+    // #ifdef DEBUG_SMS
+    //     // Serial.println("Sending SMS Blast");
+    //     // for(int x = 0; x < contactCount; x++){
+    //     //   enqueueSms(contacts[x].c_str(), "Test SMS from Heat Index Project \r\n");
+    //     //   vTaskDelay(pdMS_TO_TICKS(100));
+    //     // }
+    // #endif
 
     // Update Modbus Slave
     sendTowerLightsMulti(1, 0);
@@ -573,7 +584,7 @@ void loop() {
 
 
     String _payload = "{\"hi\":\"" + String(sensorData.heatIndex, 2) + "\", \"t\":\"" + String(sensorData.temperature, 2) + "\", \"h\":\"" + String(sensorData.humidity, 2) + "\"}";
-    
+
 
     if (isMQTTConnectedGSM) {
       mqttGSM.publish(topicSensorData.c_str(), _payload.c_str());
@@ -692,5 +703,17 @@ void modbusTask(void* pvParameters) {
   for (;;) {
     modbus.task();
     vTaskDelay(pdMS_TO_TICKS(10));
+  }
+}
+
+void rtcTask(void* pvParameters) {
+  for (;;) {
+    if (isMQTTConnectedGSM) {
+      mqttGSM.publish(topicRequestDateTime.c_str(), "SAMPLE");
+    } else if (isMQTTConnectedWiFi) {
+      mqttWiFi.publish(topicRequestDateTime.c_str(), "SAMPLE");
+    }
+
+    vTaskDelay(30000);
   }
 }
